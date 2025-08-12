@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Locations Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .map-header {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .map-info {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .filter-info {
+            font-size: 11px;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 12px;
+            color: #495057;
+        }
+
+        #map {
+            height: calc(100vh - 50px);
+            width: 100%;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.95);
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 12px;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .legend-dot.available { background: #28a745; }
+        .legend-dot.booked { background: #dc3545; }
+        .legend-dot.inactive { background: #6c757d; }
+        .legend-dot.maintenance { background: #ffc107; }
+
+        .legend-count {
+            margin-left: auto;
+            font-size: 10px;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 8px;
+            color: #6c757d;
+        }
+
+        .marker-pin {
+            width: 32px;
+            height: 40px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            position: relative;
+        }
+
+        .marker-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
+
+        /* Split marker styles */
+        .split-pin {
+            display: flex;
+            width: 32px;
+            height: 40px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+
+        .split-half {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .split-left {
+            border-radius: 50% 0 0 0;
+        }
+
+        .split-right {
+            border-radius: 0 50% 50% 0;
+        }
+
+        .split-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            font-size: 8px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
+
+        .popup-content {
+            font-family: inherit;
+            min-width: 200px;
+        }
+
+        .popup-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 4px;
+        }
+
+        .popup-row {
+            display: flex;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .popup-label {
+            font-weight: 500;
+            color: #6c757d;
+            width: 60px;
+        }
+
+        .popup-value {
+            color: #495057;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-available { background: #d1ecf1; color: #0c5460; }
+        .status-booked { background: #f8d7da; color: #721c24; }
+        .status-inactive { background: #e2e3e5; color: #383d41; }
+        .status-maintenance { background: #fff3cd; color: #856404; }
+
+        .customer-note {
+            background: #f8f9fa;
+            padding: 6px;
+            border-radius: 4px;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #495057;
+            border-left: 2px solid #007bff;
+        }
+
+        /* Split popup styles */
+        .split-popup {
+            min-width: 280px;
+        }
+
+        .split-screen-info {
+            display: flex;
+            gap: 12px;
+            margin: 8px 0;
+        }
+
+        .screen-side {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+
+        .screen-side h5 {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .screen-side p {
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .shared-location-info {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+            font-size: 11px;
+        }
+
+        .shared-location-info p {
+            margin: 2px 0;
+        }
+
+        @media (max-width: 768px) {
+            .map-header { padding: 8px 12px; flex-direction: column; gap: 4px; }
+            .map-title { font-size: 16px; }
+            .legend { bottom: 10px; right: 10px; left: 10px; }
+            #map { height: calc(100vh - 60px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="map-header">
+        <div class="map-title">Screen Locations</div>
+        <div class="map-info">
+            <div>8/11/2025</div>
+            <div class="filter-info">All Screens</div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="legend">
+        <div class="legend-title">Status</div>
+        <div class="legend-item">
+            <div class="legend-dot available"></div>
+            <span>Available</span>
+            <span class="legend-count">26</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot booked"></div>
+            <span>Booked</span>
+            <span class="legend-count">0</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot inactive"></div>
+            <span>Inactive</span>
+            <span class="legend-count">0</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot maintenance"></div>
+            <span>Maintenance</span>
+            <span class="legend-count">0</span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        // Embedded screen data
+        const screens = [{"screenId":"1A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_20n79oetymdpn9m2i","createdAt":"2025-07-30T07:28:34.554Z","updatedAt":"2025-07-30T12:19:12.804Z","latitude":29.3071,"longitude":48.01787,"displayStatus":"Available","customerInfo":""},{"screenId":"3A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_vqwacyxe3mdpo9adx","id":"id_pom1oh4xxmdpnapae","createdAt":"2025-07-30T07:29:25.382Z","updatedAt":"2025-07-30T14:35:21.918Z","latitude":29.30616,"longitude":48.01404,"displayStatus":"Available","customerInfo":""},{"screenId":"8A","location":"5th ring road","screenType":"Luxury","loopTime":60,"status":"Active","circuit":"id_xch0as0zrmdpr0ywc","id":"id_ba39z5rhhmdpnb8je","createdAt":"2025-07-30T07:29:50.330Z","updatedAt":"2025-07-30T14:35:43.846Z","latitude":29.30309,"longitude":47.95792,"displayStatus":"Available","customerInfo":""},{"screenId":"14A","location":"6th ring road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_i3xemdi8hmdpnbxnn","createdAt":"2025-07-30T07:30:22.883Z","updatedAt":"2025-07-30T14:36:09.246Z","latitude":29.26568,"longitude":48.00375,"displayStatus":"Available","customerInfo":""},{"screenId":"18A","location":"6th ring road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_ac144m4l4mdpnca62","createdAt":"2025-07-30T07:30:39.098Z","updatedAt":"2025-07-30T14:36:35.341Z","latitude":29.26776,"longitude":48.08249,"displayStatus":"Available","customerInfo":""},{"screenId":"20A","location":"6th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_vqwacyxe3mdpo9adx","id":"id_ufgtottqrmdpncl6y","createdAt":"2025-07-30T07:30:53.386Z","updatedAt":"2025-07-30T14:36:53.430Z","latitude":29.26501,"longitude":48.01436,"displayStatus":"Available","customerInfo":""},{"screenId":"38A","location":"Fahaheel road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_43oqdynrtmdpndi02","createdAt":"2025-07-30T07:31:35.906Z","updatedAt":"2025-07-30T14:37:20.807Z","latitude":29.3119,"longitude":48.05431,"displayStatus":"Available","customerInfo":""},{"screenId":"38B","location":"Fahaheel road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_5vggoemxvmdpndsvo","createdAt":"2025-07-30T07:31:50.004Z","updatedAt":"2025-07-30T14:37:27.614Z","latitude":29.3119,"longitude":48.05431,"displayStatus":"Available","customerInfo":""},{"screenId":"39A","location":"Fahaheel road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_vqwacyxe3mdpo9adx","id":"id_rclflqc3rmdpne0wa","createdAt":"2025-07-30T07:32:00.394Z","updatedAt":"2025-07-30T14:37:51.254Z","latitude":29.31205,"longitude":48.05528,"displayStatus":"Available","customerInfo":""},{"screenId":"39B","location":"Fahaheel road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_518zhsmg7mdpnec0q","createdAt":"2025-07-30T07:32:14.810Z","updatedAt":"2025-07-30T14:46:29.053Z","latitude":29.31205,"longitude":48.05528,"displayStatus":"Available","customerInfo":""},{"screenId":"53A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_3p4a6i3jgmdpnepxd","createdAt":"2025-07-30T07:32:32.833Z","updatedAt":"2025-07-30T14:38:30.446Z","latitude":29.32442,"longitude":48.08403,"displayStatus":"Available","customerInfo":""},{"screenId":"84A","location":"5th ring road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_03zcgqtqemdpnf6j6","createdAt":"2025-07-30T07:32:54.354Z","updatedAt":"2025-07-30T14:38:47.390Z","latitude":29.30456,"longitude":47.9829,"displayStatus":"Available","customerInfo":""},{"screenId":"87A","location":"Airport Road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_lzu05fhrumdpnfjep","createdAt":"2025-07-30T07:33:11.041Z","updatedAt":"2025-07-30T14:39:11.550Z","latitude":29.30097,"longitude":47.98032,"displayStatus":"Available","customerInfo":""},{"screenId":"105A","location":"5th ring road","screenType":"Luxury","loopTime":60,"status":"Active","circuit":"id_xch0as0zrmdpr0ywc","id":"id_5xmtm88lwmdpngay3","createdAt":"2025-07-30T07:33:46.731Z","updatedAt":"2025-07-30T14:39:30.166Z","latitude":29.30255,"longitude":47.95125,"displayStatus":"Available","customerInfo":""},{"screenId":"107A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_vqwacyxe3mdpo9adx","id":"id_h8i2d57mqmdpngmhe","createdAt":"2025-07-30T07:34:01.682Z","updatedAt":"2025-07-30T14:39:51.774Z","latitude":29.30219,"longitude":47.95729,"displayStatus":"Available","customerInfo":""},{"screenId":"110A","location":"Airport Road","screenType":"Normal","loopTime":60,"status":"Active","circuit":null,"id":"id_okga0zh73mdpngyma","createdAt":"2025-07-30T07:34:17.410Z","latitude":29.25228,"longitude":47.97477,"updatedAt":"2025-07-30T14:40:09.022Z","displayStatus":"Available","customerInfo":""},{"screenId":"113A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_kwzv4jvnnmdpnhif5","createdAt":"2025-07-30T07:34:43.073Z","updatedAt":"2025-07-30T14:40:32.125Z","latitude":29.30185,"longitude":47.95274,"displayStatus":"Available","customerInfo":""},{"screenId":"114A","location":"Fahaheel road","screenType":"Premium","loopTime":60,"status":"Active","circuit":null,"id":"id_b6km568ckmdpnhxop","createdAt":"2025-07-30T07:35:02.857Z","latitude":29.1888,"longitude":48.11025,"updatedAt":"2025-07-30T14:40:49.021Z","displayStatus":"Available","customerInfo":""},{"screenId":"118A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":null,"id":"id_ojhu4em8ymdpniave","createdAt":"2025-07-30T07:35:19.946Z","latitude":29.30251,"longitude":47.96182,"updatedAt":"2025-07-30T14:41:05.021Z","displayStatus":"Available","customerInfo":""},{"screenId":"138A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":null,"id":"id_5a114ggfkmdpnixi9","createdAt":"2025-07-30T07:35:49.281Z","latitude":29.30786,"longitude":48.02332,"updatedAt":"2025-07-30T14:42:25.565Z","displayStatus":"Available","customerInfo":""},{"screenId":"139A","location":"6th ring road","screenType":"Luxury","loopTime":60,"status":"Active","circuit":"id_xch0as0zrmdpr0ywc","id":"id_smsbs40lnmdpnjaxt","createdAt":"2025-07-30T07:36:06.689Z","updatedAt":"2025-07-30T14:42:47.053Z","latitude":29.26601,"longitude":47.99442,"displayStatus":"Available","customerInfo":""},{"screenId":"188A","location":"5th ring road","screenType":"Normal","loopTime":60,"status":"Active","circuit":null,"id":"id_z8zvqt6onmdpnjp61","createdAt":"2025-07-30T07:36:25.129Z","latitude":29.30677,"longitude":48.02075,"updatedAt":"2025-07-30T14:43:07.181Z","displayStatus":"Available","customerInfo":""},{"screenId":"189A","location":"King Fahed Road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_kovdh99l0mdpo78r9","id":"id_p89i4xpntmdpnk2hl","createdAt":"2025-07-30T07:36:42.393Z","updatedAt":"2025-07-30T14:43:29.645Z","latitude":29.3121,"longitude":48.01964,"displayStatus":"Available","customerInfo":""},{"screenId":"189B","location":"King Fahed Road","screenType":"Normal","loopTime":60,"status":"Active","circuit":"id_vqwacyxe3mdpo9adx","id":"id_805iafmbvmdpnkb5l","createdAt":"2025-07-30T07:36:53.625Z","updatedAt":"2025-07-30T14:43:35.093Z","latitude":29.3121,"longitude":48.01964,"displayStatus":"Available","customerInfo":""},{"screenId":"191A","location":"King Fahed Road","screenType":"Premium","loopTime":60,"status":"Active","circuit":"id_pbvb16oeomdpo5hla","id":"id_23ez53y9cmdpnkn4h","createdAt":"2025-07-30T07:37:09.137Z","updatedAt":"2025-07-30T14:43:53.893Z","latitude":29.31261,"longitude":48.02007,"displayStatus":"Available","customerInfo":""},{"screenId":"156A","location":"5th ring road","screenType":"Luxury","loopTime":60,"status":"Active","circuit":"id_xch0as0zrmdpr0ywc","id":"id_9evrcd3gtmdpo1k3z","createdAt":"2025-07-30T07:50:18.383Z","updatedAt":"2025-07-30T14:44:15.757Z","latitude":29.30282,"longitude":47.95424,"displayStatus":"Available","customerInfo":""}];
+
+        // Initialize map
+        const map = L.map('map').setView([29.3759, 47.9774], 11);
+
+        // Add tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Add markers
+        const markers = [];
+        const colors = {
+            'Available': '#28a745',
+            'Booked': '#dc3545',
+            'Inactive': '#6c757d',
+            'Maintenance': '#ffc107'
+        };
+
+        // Group screens by coordinates to handle shared locations
+        const coordinateGroups = groupScreensByCoordinates(screens);
+
+        coordinateGroups.forEach(group => {
+            if (group.screens.length === 1) {
+                // Single screen at this location
+                addSingleMarker(group.screens[0]);
+            } else {
+                // Multiple screens at same location - check for A/B pairs
+                addGroupedMarkers(group);
+            }
+        });
+
+        function groupScreensByCoordinates(screens) {
+            const groups = new Map();
+
+            screens.forEach(screen => {
+                const lat = parseFloat(screen.latitude);
+                const lng = parseFloat(screen.longitude);
+
+                if (isNaN(lat) || isNaN(lng)) return;
+
+                // Create coordinate key with precision to handle floating point comparison
+                const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+                if (!groups.has(coordKey)) {
+                    groups.set(coordKey, {
+                        latitude: lat,
+                        longitude: lng,
+                        screens: []
+                    });
+                }
+
+                groups.get(coordKey).screens.push(screen);
+            });
+
+            return Array.from(groups.values());
+        }
+
+        function addGroupedMarkers(group) {
+            // Check if this is an A/B pair sharing coordinates
+            const abPair = findABPair(group.screens);
+
+            if (abPair) {
+                // Create split marker for A/B pair
+                addSplitMarker(abPair.screenA, abPair.screenB, group.latitude, group.longitude);
+            } else {
+                // Multiple screens but not A/B pair - add individual markers with slight offset
+                group.screens.forEach((screen, index) => {
+                    addSingleMarkerWithOffset(screen, group.latitude, group.longitude, index);
+                });
+            }
+        }
+
+        function findABPair(screens) {
+            // Look for screens with same base number but A/B suffix
+            for (let i = 0; i < screens.length; i++) {
+                for (let j = i + 1; j < screens.length; j++) {
+                    const screenA = screens[i];
+                    const screenB = screens[j];
+
+                    // Extract base number and suffix
+                    const matchA = screenA.screenId.match(/^(\d+)([AB])$/);
+                    const matchB = screenB.screenId.match(/^(\d+)([AB])$/);
+
+                    if (matchA && matchB && matchA[1] === matchB[1]) {
+                        // Same base number, different A/B suffix
+                        if (matchA[2] === 'A' && matchB[2] === 'B') {
+                            return { screenA: screenA, screenB: screenB };
+                        } else if (matchA[2] === 'B' && matchB[2] === 'A') {
+                            return { screenA: screenB, screenB: screenA };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function addSingleMarker(screen) {
+            const color = colors[screen.displayStatus] || '#007bff';
+
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-pin" style="background: ${color};">
+                         <div class="marker-icon">${screen.screenId}</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+            });
+
+            let popup = `
+                <div class="popup-content">
+                    <div class="popup-title">Unit ${screen.screenId}</div>
+                    <div class="popup-row">
+                        <span class="popup-label">Unit Number:</span>
+                        <span class="popup-value"><strong>${screen.screenId}</strong></span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Location:</span>
+                        <span class="popup-value">${screen.location}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Type:</span>
+                        <span class="popup-value">${screen.screenType}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Status:</span>
+                        <span class="status-badge status-${screen.displayStatus.toLowerCase()}">${screen.displayStatus}</span>
+                    </div>
+            `;
+
+            if (screen.customerInfo && screen.displayStatus === 'Booked') {
+                popup += `<div class="customer-note">Reserved by: ${screen.customerInfo}</div>`;
+            }
+
+            popup += '</div>';
+
+            const marker = L.marker([screen.latitude, screen.longitude], { icon })
+                .bindPopup(popup);
+
+            marker.addTo(map);
+            markers.push(marker);
+        }
+
+        function addSplitMarker(screenA, screenB, lat, lng) {
+            const colorsA = {
+                'Available': '#3498db',    // Blue for A
+                'Booked': '#3498db',
+                'Inactive': '#95a5a6',
+                'Maintenance': '#e74c3c'
+            };
+
+            const colorsB = {
+                'Available': '#e67e22',    // Orange for B
+                'Booked': '#e67e22',
+                'Inactive': '#95a5a6',
+                'Maintenance': '#e74c3c'
+            };
+
+            const colorA = colorsA[screenA.displayStatus] || '#3498db';
+            const colorB = colorsB[screenB.displayStatus] || '#e67e22';
+
+            const icon = L.divIcon({
+                className: 'custom-marker split-marker',
+                html: `<div class="marker-pin split-pin">
+                         <div class="split-half split-left" style="background-color: ${colorA};">
+                           <div class="marker-icon split-icon">${screenA.screenId}</div>
+                         </div>
+                         <div class="split-half split-right" style="background-color: ${colorB};">
+                           <div class="marker-icon split-icon">${screenB.screenId}</div>
+                         </div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+            });
+
+            const popup = createSplitPopup(screenA, screenB);
+            const marker = L.marker([lat, lng], { icon }).bindPopup(popup);
+            marker.addTo(map);
+            markers.push(marker);
+        }
+
+        function addSingleMarkerWithOffset(screen, baseLat, baseLng, index) {
+            // Add small offset to prevent overlapping
+            const offsetDistance = 0.0001; // Small offset in degrees
+            const angle = (index * 60) * (Math.PI / 180); // 60 degrees apart
+            const lat = baseLat + (offsetDistance * Math.cos(angle));
+            const lng = baseLng + (offsetDistance * Math.sin(angle));
+
+            const color = colors[screen.displayStatus] || '#007bff';
+
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-pin" style="background: ${color};">
+                         <div class="marker-icon">${screen.screenId}</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+            });
+
+            let popup = `
+                <div class="popup-content">
+                    <div class="popup-title">Unit ${screen.screenId}</div>
+                    <div class="popup-row">
+                        <span class="popup-label">Unit Number:</span>
+                        <span class="popup-value"><strong>${screen.screenId}</strong></span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Location:</span>
+                        <span class="popup-value">${screen.location}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Type:</span>
+                        <span class="popup-value">${screen.screenType}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Status:</span>
+                        <span class="status-badge status-${screen.displayStatus.toLowerCase()}">${screen.displayStatus}</span>
+                    </div>
+            `;
+
+            if (screen.customerInfo && screen.displayStatus === 'Booked') {
+                popup += `<div class="customer-note">Reserved by: ${screen.customerInfo}</div>`;
+            }
+
+            popup += '</div>';
+
+            const marker = L.marker([lat, lng], { icon })
+                .bindPopup(popup);
+
+            marker.addTo(map);
+            markers.push(marker);
+        }
+
+        function createSplitPopup(screenA, screenB) {
+            return `
+                <div class="popup-content split-popup">
+                    <div class="popup-title">Shared Location: ${screenA.screenId} & ${screenB.screenId}</div>
+
+                    <div class="split-screen-info">
+                        <div class="screen-side screen-a">
+                            <h5 style="color: #3498db;">📺 ${screenA.screenId}</h5>
+                            <p><strong>Type:</strong> ${screenA.screenType}</p>
+                            <p><strong>Status:</strong> <span class="status-${screenA.displayStatus.toLowerCase()}">${screenA.displayStatus}</span></p>
+                            ${screenA.customerInfo ? `<p><strong>Customer:</strong> ${screenA.customerInfo}</p>` : ''}
+                        </div>
+
+                        <div class="screen-side screen-b">
+                            <h5 style="color: #e67e22;">📺 ${screenB.screenId}</h5>
+                            <p><strong>Type:</strong> ${screenB.screenType}</p>
+                            <p><strong>Status:</strong> <span class="status-${screenB.displayStatus.toLowerCase()}">${screenB.displayStatus}</span></p>
+                            ${screenB.customerInfo ? `<p><strong>Customer:</strong> ${screenB.customerInfo}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="shared-location-info">
+                        <p><strong>Location:</strong> ${screenA.location}</p>
+                        <p><strong>Coordinates:</strong> ${screenA.latitude}, ${screenA.longitude}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fit map to markers
+        if (markers.length > 0) {
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        // Add scale
+        L.control.scale({ position: 'bottomleft' }).addTo(map);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mega Maps Management System</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>"">
+    
+    <!-- Leaflet CSS (Local) -->
+    <link rel="stylesheet" href="lib/leaflet.css" />
+
+    <!-- Bootstrap CSS for responsive design (Local) -->
+    <link href="lib/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome for icons (Local) -->
+    <link rel="stylesheet" href="lib/fontawesome-offline.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Icon Fallback CSS (for when Font Awesome fonts are missing) -->
+    <link rel="stylesheet" href="css/icon-fallback.css">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" onclick="showDashboard()">
+                <i class="fas fa-map-marked-alt me-2"></i>
+                Mega Maps Management System
+            </a>
+            
+            <!-- Governorate Navigation -->
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown me-3" id="governorate-nav">
+                    <!-- Governorate dropdowns will be populated by JavaScript -->
+                </div>
+                
+                <!-- Main Navigation Buttons -->
+                <button class="btn btn-outline-light me-2" onclick="showDashboard()">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </button>
+                <button class="btn btn-outline-light me-2" onclick="showCampaignBuilder()">
+                    <i class="fas fa-plus-circle me-1"></i>Campaign Builder
+                </button>
+                <button class="btn btn-outline-light" onclick="showSettings()">
+                    <i class="fas fa-cog me-1"></i>Settings
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Font Missing Warning -->
+    <div class="font-awesome-missing-warning" id="fontWarning">
+        <strong>⚠️ Icons Missing:</strong> Font Awesome font files are not loaded. Icons will show as emoji fallbacks.
+        <a href="lib/webfonts/README.md" target="_blank">Click here for setup instructions</a> to fix this.
+    </div>
+
+
+
+    <!-- Main Content Area -->
+    <div class="container-fluid p-0">
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view-container">
+            <!-- Layout Controls -->
+            <div class="layout-controls d-none d-md-flex">
+                <button class="layout-control-btn" onclick="toggleMapSticky('dashboard')" id="dashboardStickyBtn" title="Toggle Sticky Map">
+                    <i class="fas fa-thumbtack"></i> Sticky Map
+                </button>
+                <button class="layout-control-btn" onclick="toggleFiltersCollapse('dashboard')" title="Toggle Filters">
+                    <i class="fas fa-eye-slash"></i> Hide Filters
+                </button>
+            </div>
+
+            <div class="map-container-wrapper">
+                <!-- Legend Panel -->
+                <div id="legend-panel" class="legend-panel">
+                    <div class="p-3 scrollable-content">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-filter me-2"></i>Filters & Legend</h5>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-primary btn-sm refresh-btn" onclick="refreshDashboard()" title="Refresh map and unit list (Ctrl+R or F5)">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Statistics Cards -->
+                        <div class="stats-container mb-3">
+                            <div class="stat-card">
+                                <div class="stat-number" id="total-units">0</div>
+                                <div class="stat-label">Total Units</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="total-face-a">0</div>
+                                <div class="stat-label">Face A</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="total-face-b">0</div>
+                                <div class="stat-label">Face B</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="total-governorates">6</div>
+                                <div class="stat-label">Governorates</div>
+                            </div>
+                        </div>
+
+                        <!-- Governorate Filter -->
+                        <div class="filter-section">
+                            <label class="form-label"><i class="fas fa-map-marked-alt me-2"></i>Governorates</label>
+                            <div id="governorate-filters" class="governorate-filters-grid">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Unit Type Filter -->
+                        <div class="filter-section">
+                            <label class="form-label"><i class="fas fa-layer-group me-2"></i>Unit Types</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="filter-regular" checked>
+                                        <label class="form-check-label" for="filter-regular" style="font-size: 12px;">
+                                            Regular
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="filter-strip" checked>
+                                        <label class="form-check-label" for="filter-strip" style="font-size: 12px;">
+                                            Strip
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Filter -->
+                        <div class="filter-section mb-3">
+                            <label class="form-label fw-bold">Search Units</label>
+                            <div class="input-group position-relative">
+                                <input type="text" class="form-control" id="dashboard-search" placeholder="Search units, roads, locations..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearDashboardSearch()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <!-- Search Results Dropdown -->
+                                <div class="search-dropdown" id="search-dropdown" style="display: none;">
+                                    <div class="search-results" id="search-results">
+                                        <!-- Results populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Face Filter -->
+                        <div class="filter-section">
+                            <label class="form-label"><i class="fas fa-eye me-2"></i>Faces</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input face-filter" type="checkbox" id="filter-face-a" checked data-face="A">
+                                        <label class="form-check-label" for="filter-face-a" style="font-size: 12px;">
+                                            <span class="face-indicator face-a">A</span> Face A
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input face-filter" type="checkbox" id="filter-face-b" checked data-face="B">
+                                        <label class="form-check-label" for="filter-face-b" style="font-size: 12px;">
+                                            <span class="face-indicator face-b">B</span> Face B
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="legend-section">
+                            <h6 class="fw-bold">Map Legend</h6>
+                            <div class="legend-item">
+                                <span class="legend-marker face-a">A</span>
+                                <span>Face A Only</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker face-b">B</span>
+                                <span>Face B Only</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker face-both">AB</span>
+                                <span>Both Faces</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resizer -->
+                <div class="resizer" id="map-resizer"></div>
+
+                <!-- Map Panel -->
+                <div id="map-panel" class="map-panel">
+                    <div id="main-map" class="map-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unit Management View -->
+        <div id="unit-management-view" class="view-container d-none">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 id="unit-management-title">Unit Management</h3>
+                    <div>
+                        <button class="btn btn-success me-2" onclick="showAddUnitModal()">
+                            <i class="fas fa-plus me-1"></i>Add Unit
+                        </button>
+                        <button class="btn btn-info me-2" onclick="showBulkImportModal()">
+                            <i class="fas fa-upload me-1"></i>Bulk Import
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportUnits()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search and Filter Bar -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="unit-search" placeholder="Search units...">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="face-filter">
+                            <option value="">All Faces</option>
+                            <option value="A">Face A</option>
+                            <option value="B">Face B</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="road-filter">
+                            <option value="">All Roads</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="strip-filter">
+                            <option value="">All Strips</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Units Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Unit Number</th>
+                                <th>Face</th>
+                                <th>Location</th>
+                                <th>Road Name</th>
+                                <th>Strip</th>
+                                <th>Coordinates</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="units-table-body">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Units pagination">
+                    <ul class="pagination justify-content-center" id="units-pagination">
+                        <!-- Populated by JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Campaign Builder View -->
+        <div id="campaign-builder-view" class="view-container d-none">
+            <!-- Layout Controls -->
+            <div class="layout-controls d-none d-md-flex">
+                <button class="layout-control-btn" onclick="toggleMapSticky('campaign')" id="campaignStickyBtn" title="Toggle Sticky Map">
+                    <i class="fas fa-thumbtack"></i> Sticky Map
+                </button>
+                <button class="layout-control-btn" onclick="toggleFiltersCollapse('campaign')" title="Toggle Unit List">
+                    <i class="fas fa-list"></i> Hide Units
+                </button>
+            </div>
+
+            <div class="container-fluid p-0">
+                <div class="row g-0">
+                    <!-- Left Panel - Campaign Selection -->
+                    <div class="col-md-4 bg-light border-end" id="campaignFiltersPanel">
+                        <div class="p-4 scrollable-content">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h4><i class="fas fa-plus-circle me-2"></i>Campaign Builder</h4>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm refresh-btn" onclick="refreshCampaignBuilder()" title="Refresh available units and map (Ctrl+R or F5)">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="window.campaignBuilder.toggleFacePanel()" title="Toggle Live Face Panel">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm" onclick="showImportFacesModal()" title="Import faces from Excel file">
+                                        <i class="fas fa-file-import me-1"></i>Import Faces
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="saveCampaign()" id="saveCampaignBtn" disabled>
+                                        <i class="fas fa-save me-1"></i>Save Campaign
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Campaign Info -->
+                            <div class="campaign-info-section mb-3">
+                                <div class="mb-2">
+                                    <input type="text" class="form-control form-control-sm" id="campaignName" placeholder="Campaign Name" style="font-size: 13px;">
+                                </div>
+                                <div class="mb-2">
+                                    <textarea class="form-control form-control-sm" id="campaignDescription" placeholder="Description (Optional)" style="height: 50px; font-size: 12px;"></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="showSavedCampaigns()" id="loadCampaignBtn">
+                                        <i class="fas fa-folder-open me-1"></i>Load Saved Campaign
+                                    </button>
+                                </div>
+                                <div class="mb-2 d-none" id="exportCurrentCampaignContainer">
+                                    <button class="btn btn-outline-success btn-sm w-100" onclick="exportCurrentCampaignToExcel()" id="exportCurrentCampaignBtn" title="Export current campaign units to Excel">
+                                        <i class="fas fa-file-excel me-1"></i>Export Current Campaign to Excel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Selection Summary -->
+                            <div class="selected-units-summary mb-4">
+                                <h6><i class="fas fa-list-check me-2"></i>Selection Summary</h6>
+                                <div class="summary-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Units:</span>
+                                        <span class="stat-value" id="selectedUnitsCount">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Face A:</span>
+                                        <span class="stat-value" id="selectedFaceACount">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Face B:</span>
+                                        <span class="stat-value" id="selectedFaceBCount">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Governorates:</span>
+                                        <span class="stat-value" id="selectedGovernoratesCount">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Batch Selection Tools -->
+                            <div class="batch-tools-section mb-4">
+                                <h6><i class="fas fa-magic me-2"></i>Batch Selection Tools</h6>
+                                <div class="batch-tools-grid">
+                                    <button class="btn btn-outline-success btn-sm batch-tool-btn" onclick="window.campaignBuilder.selectAllInGovernorate()" title="Select all units in currently filtered governorates">
+                                        <i class="fas fa-map-marked-alt me-1"></i>All in Gov
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm batch-tool-btn" onclick="window.campaignBuilder.selectAllFaceA()" title="Select all Face A units">
+                                        <i class="fas fa-square me-1"></i>All Face A
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm batch-tool-btn" onclick="window.campaignBuilder.selectAllFaceB()" title="Select all Face B units">
+                                        <i class="fas fa-square me-1"></i>All Face B
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm batch-tool-btn" onclick="window.campaignBuilder.selectAllInCurrentView()" title="Select all units visible in current map view">
+                                        <i class="fas fa-eye me-1"></i>In View
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm batch-tool-btn" onclick="window.campaignBuilder.invertSelection()" title="Invert current selection">
+                                        <i class="fas fa-exchange-alt me-1"></i>Invert
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm batch-tool-btn" onclick="window.campaignBuilder.clearAllSelections()" title="Clear all selections">
+                                        <i class="fas fa-times me-1"></i>Clear All
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Governorate Selection -->
+                            <div class="filter-section">
+                                <label class="form-label"><i class="fas fa-map me-2"></i>Governorates</label>
+                                <div id="campaignGovernorateFilters" class="governorate-filters-grid">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+
+                            <!-- Unit Type Selection -->
+                            <div class="filter-section mb-4">
+                                <h6><i class="fas fa-layer-group me-2"></i>Unit Types</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input campaign-unit-type-filter" type="checkbox" id="campaignFilterRegular" checked>
+                                    <label class="form-check-label" for="campaignFilterRegular">
+                                        <i class="fas fa-map-marker-alt me-1"></i>Mega Regular
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input campaign-unit-type-filter" type="checkbox" id="campaignFilterStrip" checked>
+                                    <label class="form-check-label" for="campaignFilterStrip">
+                                        <i class="fas fa-road me-1"></i>Mega Strip
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Face Selection -->
+                            <div class="filter-section mb-4">
+                                <h6><i class="fas fa-toggle-on me-2"></i>Face Types</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input campaign-face-filter" type="checkbox" id="campaignFilterFaceA" checked>
+                                    <label class="form-check-label" for="campaignFilterFaceA">
+                                        <span class="face-indicator face-a">A</span> Face A
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input campaign-face-filter" type="checkbox" id="campaignFilterFaceB" checked>
+                                    <label class="form-check-label" for="campaignFilterFaceB">
+                                        <span class="face-indicator face-b">B</span> Face B
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Search Filter -->
+                            <div class="filter-section mb-4">
+                                <h6><i class="fas fa-search me-2"></i>Search Units</h6>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="campaignSearchInput" placeholder="Search unit numbers (e.g., 540, 540A)">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="clearCampaignSearch()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Individual Unit Selection (Mega Regular) -->
+                            <div class="filter-section mb-4 collapsible-section" id="campaignRegularUnitsSection">
+                                <div class="collapse-toggle" onclick="toggleSectionCollapse('campaignRegularUnitsSection')">
+                                    <h6><i class="fas fa-map-marker-alt me-2"></i>Mega Regular Units <i class="fas fa-chevron-down float-end"></i></h6>
+                                </div>
+                                <div id="campaignRegularUnitsList" class="selection-list">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+
+                            <!-- Strip Selection (Mega Strip Only) -->
+                            <div class="filter-section mb-4 collapsible-section" id="campaignStripSection">
+                                <div class="collapse-toggle" onclick="toggleSectionCollapse('campaignStripSection')">
+                                    <h6>🛣️ Mega Strip Selection <i class="fas fa-chevron-down float-end"></i></h6>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Named Strips</label>
+                                    <div id="campaignStripsList" class="selection-list">
+                                        <!-- Populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="action-buttons">
+                                <button class="btn btn-outline-primary w-100 mb-2" onclick="selectAllVisible()">
+                                    <i class="fas fa-check-double me-1"></i>Select All Visible
+                                </button>
+                                <button class="btn btn-outline-secondary w-100 mb-2" onclick="clearSelection()">
+                                    <i class="fas fa-times me-1"></i>Clear Selection
+                                </button>
+                                <button class="btn btn-primary w-100" onclick="generateStaticMap()" id="generateMapBtn" disabled>
+                                    <i class="fas fa-map me-1"></i>Generate Static Map
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel - Map Preview -->
+                    <div class="col-md-8">
+                        <div class="campaign-map-container">
+                            <div id="campaign-map" class="map-container"></div>
+
+                            <!-- Map Controls Overlay -->
+                            <div class="map-controls-overlay">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-light btn-sm" onclick="fitMapToSelection()" title="Fit to Selection">
+                                        <i class="fas fa-expand-arrows-alt"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-light btn-sm" onclick="toggleMapFullscreen()" title="Toggle Fullscreen">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Draggable Live Face Selection Panel -->
+            <div id="face-selection-panel" class="draggable-panel d-none">
+                <div class="panel-header" id="panel-header">
+                    <i class="fas fa-grip-vertical me-2"></i>
+                    <span id="panel-title">Selected Faces (0)</span>
+                    <button class="panel-close-btn" onclick="window.campaignBuilder.toggleFacePanel()" title="Hide Panel">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="panel-content">
+                    <ul id="face-list" class="face-list">
+                        <!-- Populated by JavaScript -->
+                    </ul>
+                    <div class="panel-empty" id="panel-empty">
+                        <i class="fas fa-info-circle me-2"></i>No faces selected
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="settings-view" class="view-container d-none">
+            <div class="container-fluid p-4">
+                <h3 class="mb-4"><i class="fas fa-cog me-2"></i>Settings & Data Management</h3>
+
+                <!-- Data Import/Export Section -->
+                <div class="settings-section">
+                    <h5><i class="fas fa-exchange-alt me-2"></i>Data Import & Export</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-upload me-2"></i>Import Data</h6>
+                                    <p class="card-text">Import units from Excel file with bulk processing.</p>
+                                    <div class="mb-3">
+                                        <label for="settingsImportFile" class="form-label">Select Excel File</label>
+                                        <input type="file" class="form-control" id="settingsImportFile" accept=".xlsx,.xls">
+                                    </div>
+                                    <button class="btn btn-primary" onclick="importAllData()">
+                                        <i class="fas fa-upload me-1"></i>Import All Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-download me-2"></i>Export Data</h6>
+                                    <p class="card-text">Export all system data to Excel file for backup.</p>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="exportUnits" checked>
+                                            <label class="form-check-label" for="exportUnits">Units</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="exportCampaigns" checked>
+                                            <label class="form-check-label" for="exportCampaigns">Campaigns</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="exportStrips" checked>
+                                            <label class="form-check-label" for="exportStrips">Strips</label>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-success" onclick="exportAllData()">
+                                        <i class="fas fa-download me-1"></i>Export All Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Management Section -->
+                <div class="settings-section">
+                    <h5><i class="fas fa-database me-2"></i>Database Management</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-broom me-2"></i>Clear Data</h6>
+                                    <p class="card-text">Remove data from the system.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-warning" onclick="clearSampleData()">
+                                            <i class="fas fa-eraser me-1"></i>Clear Sample Data
+                                        </button>
+                                        <button class="btn btn-danger" onclick="clearAllData()">
+                                            <i class="fas fa-trash me-1"></i>Clear All Data
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-save me-2"></i>Backup</h6>
+                                    <p class="card-text">Create a complete backup of all data.</p>
+                                    <button class="btn btn-info" onclick="createBackup()">
+                                        <i class="fas fa-save me-1"></i>Create Backup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-undo me-2"></i>Restore</h6>
+                                    <p class="card-text">Restore data from a backup file.</p>
+                                    <div class="mb-2">
+                                        <input type="file" class="form-control form-control-sm" id="restoreFile" accept=".json">
+                                    </div>
+                                    <button class="btn btn-warning" onclick="restoreBackup()">
+                                        <i class="fas fa-undo me-1"></i>Restore
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Statistics Section -->
+                <div class="settings-section">
+                    <h5><i class="fas fa-chart-bar me-2"></i>System Statistics</h5>
+                    <div class="row" id="systemStats">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Map Export Section -->
+                <div class="settings-section">
+                    <h5><i class="fas fa-map me-2"></i>Static Map Export</h5>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Export Complete Map</h6>
+                            <p class="card-text">Generate a standalone HTML map file with all units for offline viewing.</p>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="mapExportTitle" placeholder="Map Title" value="Mega Maps - Complete View">
+                                        <label for="mapExportTitle">Map Title</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-3">
+                                        <input class="form-check-input" type="checkbox" id="includeAllUnits" checked>
+                                        <label class="form-check-label" for="includeAllUnits">
+                                            Include all units
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="exportStaticMap()">
+                                <i class="fas fa-map me-1"></i>Export Static Map
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Application Info Section -->
+                <div class="settings-section">
+                    <h5><i class="fas fa-info-circle me-2"></i>Application Information</h5>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Application:</strong> Mega Maps Management System</p>
+                                    <p><strong>Version:</strong> 1.0.0</p>
+                                    <p><strong>Database:</strong> IndexedDB (Offline)</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Map Provider:</strong> OpenStreetMap</p>
+                                    <p><strong>Framework:</strong> Leaflet.js</p>
+                                    <p><strong>Storage:</strong> Browser Local Storage</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Unit Modal -->
+    <div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUnitModalLabel">Add New Unit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addUnitForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="unitNumber" placeholder="Unit Number" required>
+                                    <label for="unitNumber">Unit Number</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="unitFace" required>
+                                        <option value="">Select Face</option>
+                                        <option value="A">Face A</option>
+                                        <option value="B">Face B</option>
+                                        <option value="A/B">Face A/B (Both)</option>
+                                    </select>
+                                    <label for="unitFace">Face</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="unitGovernorate" required>
+                                        <option value="">Select Governorate</option>
+                                    </select>
+                                    <label for="unitGovernorate">Governorate</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="unitType" required>
+                                        <option value="">Select Type</option>
+                                        <option value="regular">Mega Regular</option>
+                                        <option value="strip">Mega Strip</option>
+                                    </select>
+                                    <label for="unitType">Unit Type</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="unitLocation" placeholder="Location" required>
+                            <label for="unitLocation">Location</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="unitRoadName" placeholder="Road Name" required>
+                            <label for="unitRoadName">Road Name</label>
+                        </div>
+                        <div class="form-floating mb-3" id="stripNameContainer" style="display: none;">
+                            <input type="text" class="form-control" id="unitStripName" placeholder="Strip Name">
+                            <label for="unitStripName">Strip Name</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="unitCoordinates" placeholder="29.3375, 47.9783" required>
+                            <label for="unitCoordinates">Coordinates (Latitude, Longitude)</label>
+                            <div class="form-text">Format: 29.3375, 47.9783 (copy-paste from Google Maps)</div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="unitNotes" placeholder="Notes" style="height: 100px"></textarea>
+                            <label for="unitNotes">Notes (Optional)</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUnit()">Save Unit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Unit Modal -->
+    <div class="modal fade" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUnitModalLabel">Edit Unit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUnitForm">
+                        <input type="hidden" id="editUnitId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="editUnitNumber" placeholder="Unit Number" required>
+                                    <label for="editUnitNumber">Unit Number</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="editUnitFace" required>
+                                        <option value="">Select Face</option>
+                                        <option value="A">Face A</option>
+                                        <option value="B">Face B</option>
+                                        <option value="A/B">Face A/B (Both)</option>
+                                    </select>
+                                    <label for="editUnitFace">Face</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="editUnitGovernorate" required>
+                                        <option value="">Select Governorate</option>
+                                    </select>
+                                    <label for="editUnitGovernorate">Governorate</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="editUnitType" required>
+                                        <option value="">Select Type</option>
+                                        <option value="regular">Mega Regular</option>
+                                        <option value="strip">Mega Strip</option>
+                                    </select>
+                                    <label for="editUnitType">Unit Type</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="editUnitLocation" placeholder="Location" required>
+                            <label for="editUnitLocation">Location</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="editUnitRoadName" placeholder="Road Name" required>
+                            <label for="editUnitRoadName">Road Name</label>
+                        </div>
+                        <div class="form-floating mb-3" id="editStripNameContainer" style="display: none;">
+                            <input type="text" class="form-control" id="editUnitStripName" placeholder="Strip Name">
+                            <label for="editUnitStripName">Strip Name</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="editUnitCoordinates" placeholder="29.3375, 47.9783" required>
+                            <label for="editUnitCoordinates">Coordinates (Latitude, Longitude)</label>
+                            <div class="form-text">Format: 29.3375, 47.9783 (copy-paste from Google Maps)</div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="editUnitNotes" placeholder="Notes" style="height: 100px"></textarea>
+                            <label for="editUnitNotes">Notes (Optional)</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateUnit()">Update Unit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Strip Modal -->
+    <div class="modal fade" id="createStripModal" tabindex="-1" aria-labelledby="createStripModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createStripModalLabel">
+                        <i class="fas fa-plus me-2"></i>Create New Strip
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Creating strip for:</strong> <span id="createStripGovernorate"></span>
+                    </div>
+                    <form id="createStripForm">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="stripName" placeholder="Strip Name" required>
+                            <label for="stripName">Strip Name * (e.g., Gulf Road Strip 1)</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="stripRoadName" placeholder="Road Name">
+                            <label for="stripRoadName">Road Name (Optional)</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="stripNotes" placeholder="Notes" style="height: 100px"></textarea>
+                            <label for="stripNotes">Notes (Optional)</label>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Note:</strong> This creates only the strip container. You can add units after creation via bulk import or manual entry.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createStripForGovernorate()">
+                        <i class="fas fa-plus me-1"></i>Create Strip
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Strips Modal -->
+    <div class="modal fade" id="manageStripsModal" tabindex="-1" aria-labelledby="manageStripsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageStripsModalLabel">
+                        <i class="fas fa-list me-2"></i>Manage Strips - <span id="manageStripsGovernorate"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <button class="btn btn-primary btn-sm" onclick="showCreateStripModalFromManage()">
+                                <i class="fas fa-plus me-1"></i>Create Strip
+                            </button>
+                        </div>
+                        <div>
+                            <input type="text" class="form-control form-control-sm" id="stripSearchInput" placeholder="Search strips..." style="width: 200px;">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Strip Name</th>
+                                    <th>Road Name</th>
+                                    <th>Units</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manageStripsTableBody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="noStripsFoundMessage" class="text-center py-4 d-none">
+                        <i class="fas fa-road fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No strips found</h5>
+                        <p class="text-muted">Create your first strip to get started</p>
+                        <button class="btn btn-primary" onclick="showCreateStripModalFromManage()">
+                            <i class="fas fa-plus me-1"></i>Create Strip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strip Units Modal -->
+    <div class="modal fade" id="stripUnitsModal" tabindex="-1" aria-labelledby="stripUnitsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stripUnitsModalLabel">
+                        <i class="fas fa-map-marker-alt me-2"></i>Units in Strip: <span id="stripUnitsStripName"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="container-fluid h-100">
+                        <div class="row g-0 h-100">
+                            <!-- Left Panel - Units List -->
+                            <div class="col-md-6 bg-light border-end">
+                                <div class="p-4 h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <button class="btn btn-primary btn-sm" onclick="stripManager.showAddUnitToStripModal(stripManager.currentStripId)">
+                                                <i class="fas fa-plus me-1"></i>Add Unit
+                                            </button>
+                                            <button class="btn btn-success btn-sm" onclick="stripManager.showBulkImportToStripModal(stripManager.currentStripId)">
+                                                <i class="fas fa-upload me-1"></i>Bulk Import
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-primary" id="stripUnitsCount">0 units</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="stripUnitsSearch" placeholder="Search units..." oninput="filterStripUnits()">
+                                            <label for="stripUnitsSearch">🔍 Search by Road, Face, or Unit Number</label>
+                                        </div>
+                                        <div class="form-text">
+                                            Examples: "Face B", "Road 30", "540", "Face B Road 30"
+                                        </div>
+                                    </div>
+
+                                    <div class="flex-grow-1 overflow-auto">
+                                        <div class="table-responsive h-100">
+                                            <table class="table table-striped table-hover table-sm">
+                                                <thead class="table-dark sticky-top">
+                                                    <tr>
+                                                        <th>Unit #</th>
+                                                        <th>Face</th>
+                                                        <th>Location</th>
+                                                        <th>Coordinates</th>
+                                                        <th>Road</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="stripUnitsTableBody">
+                                                    <!-- Populated by JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div id="noUnitsInStripMessage" class="text-center py-4 d-none">
+                                            <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">No units in this strip</h5>
+                                            <p class="text-muted">Add units manually or via bulk import</p>
+                                            <button class="btn btn-primary" onclick="stripManager.showAddUnitToStripModal(stripManager.currentStripId)">
+                                                <i class="fas fa-plus me-1"></i>Add Unit
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Panel - Map -->
+                            <div class="col-md-6">
+                                <div class="strip-units-map-container h-100">
+                                    <div id="strip-units-map" class="h-100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Unit to Strip Modal -->
+    <div class="modal fade" id="addUnitToStripModal" tabindex="-1" aria-labelledby="addUnitToStripModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUnitToStripModalLabel">
+                        <i class="fas fa-plus me-2"></i>Add Unit to Strip
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Adding unit to:</strong> <span id="addUnitStripName"></span>
+                    </div>
+                    <form id="addUnitToStripForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="stripUnitNumber" placeholder="Unit Number" required>
+                                    <label for="stripUnitNumber">Unit Number *</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="stripUnitFace" required>
+                                        <option value="">Select Face</option>
+                                        <option value="A">Face A</option>
+                                        <option value="B">Face B</option>
+                                        <option value="A/B">Face A/B (Both)</option>
+                                    </select>
+                                    <label for="stripUnitFace">Face *</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="stripUnitLocation" placeholder="Location">
+                            <label for="stripUnitLocation">Location (Optional)</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="stripUnitCoordinates" placeholder="29.3375, 47.9783">
+                            <label for="stripUnitCoordinates">Coordinates (Optional)</label>
+                            <div class="form-text">Format: latitude, longitude (e.g., 29.3375, 47.9783)</div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="stripUnitRoadName" placeholder="Road Name">
+                            <label for="stripUnitRoadName">Road Name (Optional)</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addUnitToCurrentStrip()">
+                        <i class="fas fa-plus me-1"></i>Add Unit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strip Bulk Import Modal -->
+    <div class="modal fade" id="stripBulkImportModal" tabindex="-1" aria-labelledby="stripBulkImportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stripBulkImportModalLabel">
+                        <i class="fas fa-upload me-2"></i>Bulk Import Units to Strip
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Importing to Strip:</strong> <span id="importStripName"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stripBulkFile" class="form-label">
+                            <i class="fas fa-file-excel me-1"></i>Select Excel File
+                        </label>
+                        <input type="file" class="form-control" id="stripBulkFile" accept=".xlsx,.xls" onchange="previewStripImport()">
+                        <div class="form-text">
+                            Excel should contain: Unit Number, Face (A, B, or A/B), Location, Coordinates, Road Name (optional)
+                        </div>
+                    </div>
+
+                    <div id="stripImportPreview" class="d-none">
+                        <h6>Import Preview:</h6>
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Unit Number</th>
+                                        <th>Face</th>
+                                        <th>Location</th>
+                                        <th>Coordinates</th>
+                                        <th>Road Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stripImportPreviewBody">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmStripImport" onclick="confirmStripImport()" disabled>
+                        <i class="fas fa-upload me-1"></i>Import Units
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Import Modal -->
+    <div class="modal fade" id="bulkImportModal" tabindex="-1" aria-labelledby="bulkImportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkImportModalLabel">Bulk Import Units</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Excel Format Requirements:</h6>
+                        <p class="mb-2">Your Excel file should have the following columns:</p>
+                        <code>unit number | face (A, B, or A/B) | governorate | location | road name | coordinates | notes</code>
+                        <p class="mt-2 mb-1"><small><strong>Coordinates format:</strong> "29.3375, 47.9783" (latitude, longitude with comma)</small></p>
+                        <p class="mb-0"><small><strong>Governorate:</strong> Can be ID (capital, hawally) or name (Capital, Hawally)</small></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bulkImportFile" class="form-label">Select Excel File</label>
+                        <input type="file" class="form-control" id="bulkImportFile" accept=".xlsx,.xls" required>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="generateSampleExcel()">
+                                <i class="fas fa-download me-1"></i>Download Sample Excel Template
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="bulkImportGovernorate" required>
+                                    <option value="">Select Governorate</option>
+                                </select>
+                                <label for="bulkImportGovernorate">Default Governorate</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="bulkImportType" required>
+                                    <option value="">Select Type</option>
+                                    <option value="regular">Mega Regular</option>
+                                    <option value="strip">Mega Strip</option>
+                                </select>
+                                <label for="bulkImportType">Default Unit Type</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="importPreview" class="d-none">
+                        <h6>Import Preview:</h6>
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Unit Number</th>
+                                        <th>Face</th>
+                                        <th>Location</th>
+                                        <th>Road Name</th>
+                                        <th>Coordinates</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="importPreviewBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info" onclick="previewImport()">Preview</button>
+                    <button type="button" class="btn btn-success" onclick="executeImport()" id="executeImportBtn" disabled>Import Units</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Campaigns Modal -->
+    <div class="modal fade" id="savedCampaignsModal" tabindex="-1" aria-labelledby="savedCampaignsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="savedCampaignsModalLabel">
+                        <i class="fas fa-folder-open me-2"></i>Saved Campaigns
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="campaignSearchInput" placeholder="Search campaigns..." onkeyup="filterCampaigns()">
+                    </div>
+                    <div id="campaignsList" class="campaigns-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div id="noCampaignsMessage" class="text-center text-muted py-4 d-none">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i>
+                        <p>No saved campaigns found</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Faces Modal -->
+    <div class="modal fade" id="importFacesModal" tabindex="-1" aria-labelledby="importFacesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importFacesModalLabel">
+                        <i class="fas fa-file-import me-2"></i>Import Faces from Excel
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Import faces for campaign selection</strong><br>
+                        Upload an Excel file with Unit ID and Face columns to quickly select faces in the Campaign Builder.
+                        Only faces from the currently selected governorate(s) will be imported.
+                        You can import multiple files for different governorates - new selections will be added to existing ones.
+                        This will not add new units to the database - only select existing ones.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="facesFileInput" class="form-label">Select Excel File</label>
+                        <input type="file" class="form-control" id="facesFileInput" accept=".xlsx,.xls" onchange="handleFacesFileSelect(event)">
+                        <div class="form-text">Supported formats: .xlsx, .xls</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Supported File Formats:</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Format 1 (Separate rows):</strong>
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr><th>Unit ID</th><th>Face</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>123</td><td>A</td></tr>
+                                        <tr><td>123</td><td>B</td></tr>
+                                        <tr><td>245</td><td>A</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Format 2 (Combined):</strong>
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr><th>Unit ID</th><th>Face</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>123</td><td>A/B</td></tr>
+                                        <tr><td>245</td><td>A/B</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="importPreview" class="d-none">
+                        <h6>Import Preview:</h6>
+                        <div id="importSummary" class="alert alert-secondary"></div>
+                        <div id="importErrors" class="alert alert-warning d-none"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="importFacesBtn" onclick="importFaces()" disabled>
+                        <i class="fas fa-upload me-1"></i>Import Faces
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries (Local) -->
+    <script src="lib/leaflet.js"></script>
+    <script src="lib/bootstrap.bundle.min.js"></script>
+    <script src="lib/xlsx.full.min.js"></script>
+    
+    <!-- Custom JavaScript Modules -->
+    <script src="js/fileSystemManager.js"></script>
+    <script src="js/fileDatabase.js"></script>
+    <script src="js/dataMigration.js"></script>
+    <script src="js/exportImportUI.js"></script>
+    <script src="js/governorates.js"></script>
+    <script src="js/mapRenderer.js"></script>
+    <script src="js/unitManager.js"></script>
+    <script src="js/campaignBuilder.js"></script>
+    <script src="js/staticMapExporter.js"></script>
+    <script src="js/stripManager.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
